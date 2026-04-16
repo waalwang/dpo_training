@@ -1,0 +1,27 @@
+# Core
+torch>=2.1.0
+transformers>=4.45.0
+datasets>=2.18.0
+accelerate>=0.27.0
+
+# DPO training
+trl>=0.12.0
+peft>=0.10.0
+bitsandbytes>=0.43.0
+
+# Data
+pyarrow>=14.0.0
+pandas>=2.0.0
+
+# Logging / tracking
+wandb>=0.16.0
+
+# Eval
+rouge-score>=0.1.2
+
+# Eval - extra metrics (optional, only needed with --extra-metrics)
+# sacrebleu>=2.4.0      # self-BLEU
+# mauve-text>=0.4.0     # MAUVE (naturalness vs human distribution)
+
+# Full fine-tune multi-GPU (cloud_full profile)
+# deepspeed>=0.14.0

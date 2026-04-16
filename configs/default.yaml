@@ -1,0 +1,121 @@
+# DPO Training Config
+# -------------------
+
+model:
+  name: "Qwen/Qwen2.5-1.5B-Instruct"
+  max_length: 8192          # matches crawler's max_total_tokens
+
+# Model presets -- use with --model-override <key>
+model_presets:
+  qwen-1.5b:
+    name: "Qwen/Qwen2.5-1.5B-Instruct"
+  qwen-7b:
+    name: "Qwen/Qwen2.5-7B-Instruct"
+  qwen-14b:
+    name: "Qwen/Qwen2.5-14B-Instruct"
+  llama-8b:
+    name: "meta-llama/Llama-3.1-8B-Instruct"
+
+data:
+  # Path to trajectory parquet files from the crawler
+  trajectory_dir: "../crawler/conversation_crawler/data/trajectory"
+  # Optional: filter by source
+  source: null              # null = all, "reddit", "hacker_news"
+  test_split: 0.05
+  seed: 42
+  score_delta_threshold: 0.0  # drop pairs with chosen-rejected score delta <= this
+
+# QLoRA config
+qlora:
+  r: 16
+  lora_alpha: 32
+  lora_dropout: 0.05
+  target_modules:
+    - "q_proj"
+    - "k_proj"
+    - "v_proj"
+    - "o_proj"
+    - "gate_proj"
+    - "up_proj"
+    - "down_proj"
+  task_type: "CAUSAL_LM"
+
+# Hardware profiles
+profiles:
+  local:
+    # GTX 1080Ti 11GB (Pascal -- no bf16, no flash attention 2, weak fp16 compute)
+    per_device_train_batch_size: 1
+    gradient_accumulation_steps: 1
+    bf16: false
+    fp16: true
+    attn_implementation: "eager"
+    gradient_checkpointing: true
+    max_length: 2048        # tight for 11GB VRAM
+    max_prompt_length: 1024
+
+  cloud:
+    # QLoRA on 1.5B/7B, 1xA100 40GB
+    per_device_train_batch_size: 2
+    gradient_accumulation_steps: 4
+    bf16: true
+    fp16: false
+    full_finetune: false
+    attn_implementation: "flash_attention_2"
+    gradient_checkpointing: true
+    max_length: 8192
+    max_prompt_length: 2048
+
+  cloud_full:
+    # Full fine-tune 7B/8B, 2xA100 80GB or 4xA100 40GB
+    # Use with: --model-override qwen-7b or llama-8b
+    # Launch with: accelerate launch --config_file configs/deepspeed_z3.yaml train.py ...
+    per_device_train_batch_size: 1
+    gradient_accumulation_steps: 16
+    bf16: true
+    fp16: false
+    full_finetune: true
+    attn_implementation: "flash_attention_2"
+    gradient_checkpointing: true
+    max_length: 8192
+    max_prompt_length: 2048
+    learning_rate: 2.0e-5     # lower LR for full FT
+    weight_decay: 0.05
+
+  cloud_qlora_big:
+    # QLoRA on 14B, 1xA100 80GB
+    # Use with: --model-override qwen-14b
+    per_device_train_batch_size: 1
+    gradient_accumulation_steps: 16
+    bf16: true
+    fp16: false
+    full_finetune: false
+    attn_implementation: "flash_attention_2"
+    gradient_checkpointing: true
+    max_length: 8192
+    max_prompt_length: 2048
+
+# Stage 1: SFT on chosen trajectories (used when --stage sft or both)
+# Inherits hardware settings from the active profile.
+# Only override what differs from the DPO stage.
+sft:
+  output_dir: "outputs/sft"
+  num_train_epochs: 1
+  learning_rate: 2.0e-5    # lower LR for SFT -- less aggressive than DPO stage
+  warmup_steps: 50
+
+training:
+  num_train_epochs: 3
+  learning_rate: 5.0e-5
+  warmup_steps: 100
+  weight_decay: 0.01
+  lr_scheduler_type: "cosine"
+  beta: 0.1                 # DPO beta -- controls divergence from reference
+  loss_type: "ipo"          # sigmoid | hinge | ipo (ipo = robust to noisy pairs)
+  rpo_alpha: 1.0            # mixes SFT-on-chosen into loss (0 = pure DPO/IPO)
+  logging_steps: 10
+  save_steps: 200
+  eval_steps: 200
+  save_total_limit: 3
+  output_dir: "outputs"
+  report_to: "wandb"
+  run_name: "qwen2.5-1.5b-dpo-trajectory"

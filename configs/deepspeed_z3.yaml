@@ -1,0 +1,20 @@
+# Accelerate config for DeepSpeed ZeRO-3 (full fine-tune on multi-GPU)
+#
+# Usage:
+#   accelerate launch --config_file configs/deepspeed_z3.yaml \
+#       train.py --profile cloud_full --model-override qwen-7b
+
+compute_environment: LOCAL_MACHINE
+distributed_type: DEEPSPEED
+deepspeed_config:
+  deepspeed_multinode_launcher: standard
+  zero_stage: 3
+  offload_optimizer_device: none
+  offload_param_device: none
+  zero3_init_flag: true
+  zero3_save_16bit_model: true
+  gradient_accumulation_steps: 16
+  gradient_clipping: 1.0
+mixed_precision: bf16
+num_machines: 1
+num_processes: 2              # adjust to number of GPUs

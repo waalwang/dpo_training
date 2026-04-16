@@ -7,7 +7,7 @@ accelerate>=0.27.0
 # DPO training
 trl>=0.12.0
 peft>=0.10.0
-bitsandbytes>=0.43.0
+bitsandbytes>=0.45.0  # 0.45+ adds sm_120 (Blackwell) support
 
 # Data
 pyarrow>=14.0.0

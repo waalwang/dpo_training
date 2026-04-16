@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # vast.ai startup script for DPO training
-# Base image: pytorch/pytorch:2.5.1-cuda12.4.1 (runtime -- nvcc installed below)
+# Base image: pytorch/pytorch:2.6.0-cuda12.8-cudnn9-runtime (or newer)
+# Blackwell (sm_120, RTX PRO 6000) needs CUDA 12.8+ runtime and driver 570+
 set -euo pipefail
 
 REPO_DIR="/workspace/dpo_training"
@@ -9,7 +10,19 @@ LOG="$REPO_DIR/onstart.log"
 echo "[onstart] $(date) - starting" | tee -a "$LOG"
 
 # ── 1. System deps ────────────────────────────────────────────────────────────
-apt-get update -qq && apt-get install -y -qq git rsync cuda-toolkit-12-4 > /dev/null
+apt-get update -qq && apt-get install -y -qq git rsync curl ca-certificates > /dev/null
+
+# ── 1.5. Claude Code CLI ──────────────────────────────────────────────────────
+# Pro/Max subscription: run `claude` once after boot to do the browser OAuth.
+# Credentials persist in ~/.claude/ so later sessions are auto-logged-in.
+if ! command -v claude >/dev/null 2>&1; then
+    echo "[onstart] installing Node.js 20 + Claude Code" | tee -a "$LOG"
+    curl -fsSL https://deb.nodesource.com/setup_20.x | bash - >> "$LOG" 2>&1
+    apt-get install -y -qq nodejs > /dev/null
+    npm install -g @anthropic-ai/claude-code >> "$LOG" 2>&1 || \
+        echo "[onstart] WARNING: claude code install failed -- see $LOG" | tee -a "$LOG"
+fi
+echo "[onstart] run 'claude' to login with your Pro account (first time only)" | tee -a "$LOG"
 
 # ── 2. Clone / pull repo ──────────────────────────────────────────────────────
 # Set REPO_URL in the vast.ai template env vars, or replace below.
@@ -43,11 +56,8 @@ if [ "${INSTALL_DEEPSPEED:-0}" = "1" ]; then
     pip install --quiet deepspeed>=0.14.0
 fi
 
-# flash-attn: pre-built wheel is much faster than compiling
-# version must match torch+cuda combo: torch 2.5.1 + cuda 12.4
-echo "[onstart] installing flash-attn" | tee -a "$LOG"
-pip install --quiet flash-attn --no-build-isolation 2>>"$LOG" || \
-    echo "[onstart] WARNING: flash-attn install failed -- training will fall back to eager" | tee -a "$LOG"
+# Attention: using PyTorch SDPA (built-in, no extra install).
+# Configs set attn_implementation: "sdpa" -- works on Blackwell/Ampere/Ada.
 
 # ── 4. WandB login ────────────────────────────────────────────────────────────
 # Set WANDB_API_KEY in vast.ai template env vars.

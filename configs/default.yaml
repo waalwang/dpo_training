@@ -3,7 +3,7 @@
 
 model:
   name: "Qwen/Qwen2.5-1.5B-Instruct"
-  max_length: 8192          # matches crawler's max_total_tokens
+  max_length: 4096          # dataset p50 fits within this; was 8192
 
 # Model presets -- use with --model-override <key>
 model_presets:
@@ -54,45 +54,44 @@ profiles:
     max_prompt_length: 1024
 
   cloud:
-    # QLoRA on 1.5B/7B, 1xA100 40GB
-    per_device_train_batch_size: 2
-    gradient_accumulation_steps: 4
+    # QLoRA on 1.5B/7B, 1xRTX PRO 6000 WS 96GB
+    per_device_train_batch_size: 8    # 96GB VRAM + 4096 seq len gives plenty of headroom
+    gradient_accumulation_steps: 2    # effective batch 16
     bf16: true
     fp16: false
     full_finetune: false
-    attn_implementation: "flash_attention_2"
+    attn_implementation: "sdpa"
     gradient_checkpointing: true
-    max_length: 8192
-    max_prompt_length: 2048
+    max_length: 4096
+    max_prompt_length: 1024
 
   cloud_full:
-    # Full fine-tune 7B/8B, 2xA100 80GB or 4xA100 40GB
+    # Full fine-tune 7B/8B, 1xRTX PRO 6000 WS 96GB (single GPU now feasible)
     # Use with: --model-override qwen-7b or llama-8b
-    # Launch with: accelerate launch --config_file configs/deepspeed_z3.yaml train.py ...
-    per_device_train_batch_size: 1
-    gradient_accumulation_steps: 16
+    per_device_train_batch_size: 2
+    gradient_accumulation_steps: 8    # effective batch 16
     bf16: true
     fp16: false
     full_finetune: true
-    attn_implementation: "flash_attention_2"
+    attn_implementation: "sdpa"
     gradient_checkpointing: true
-    max_length: 8192
-    max_prompt_length: 2048
+    max_length: 4096
+    max_prompt_length: 1024
     learning_rate: 2.0e-5     # lower LR for full FT
     weight_decay: 0.05
 
   cloud_qlora_big:
-    # QLoRA on 14B, 1xA100 80GB
+    # QLoRA on 14B, 1xRTX PRO 6000 WS 96GB
     # Use with: --model-override qwen-14b
-    per_device_train_batch_size: 1
-    gradient_accumulation_steps: 16
+    per_device_train_batch_size: 2
+    gradient_accumulation_steps: 8    # effective batch 16
     bf16: true
     fp16: false
     full_finetune: false
-    attn_implementation: "flash_attention_2"
+    attn_implementation: "sdpa"
     gradient_checkpointing: true
-    max_length: 8192
-    max_prompt_length: 2048
+    max_length: 4096
+    max_prompt_length: 1024
 
 # Stage 1: SFT on chosen trajectories (used when --stage sft or both)
 # Inherits hardware settings from the active profile.

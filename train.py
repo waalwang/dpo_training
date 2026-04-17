@@ -214,7 +214,7 @@ def build_sft_args(cfg: dict) -> SFTConfig:
         save_total_limit=t["save_total_limit"],
         report_to=t.get("report_to", "none"),
         run_name=(t.get("run_name") or "") + "-sft",
-        max_seq_length=t["max_length"],
+        max_length=t["max_length"],
         seed=cfg["data"].get("seed", 42),
     )
 

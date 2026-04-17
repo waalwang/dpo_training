@@ -6,6 +6,7 @@ set -euo pipefail
 
 REPO_DIR="/workspace/dpo_training"
 LOG="$REPO_DIR/onstart.log"
+mkdir -p "$REPO_DIR"
 
 echo "[onstart] $(date) - starting" | tee -a "$LOG"
 
@@ -31,6 +32,10 @@ echo "[onstart] run 'claude' to login with your Pro account (first time only)" |
 #      <local path> \
 #      root@<host>:<remote path>
 REPO_URL="${REPO_URL:-}"
+# Inject GIT_TOKEN into https URL if provided
+if [ -n "${GIT_TOKEN:-}" ] && [ -n "$REPO_URL" ]; then
+    REPO_URL="${REPO_URL/https:\/\//https:\/\/${GIT_TOKEN}@}"
+fi
 if [ -n "$REPO_URL" ]; then
     if [ -d "$REPO_DIR/.git" ]; then
         echo "[onstart] pulling latest" | tee -a "$LOG"
@@ -77,14 +82,14 @@ if [ -n "${HF_TOKEN:-}" ]; then
 fi
 
 # ── 6. Smoke-test GPU ─────────────────────────────────────────────────────────
-python - <<'EOF' | tee -a "$LOG"
+python -c "
 import torch
-print(f"[gpu] CUDA available: {torch.cuda.is_available()}")
-print(f"[gpu] device count: {torch.cuda.device_count()}")
+print('[gpu] CUDA available:', torch.cuda.is_available())
+print('[gpu] device count:', torch.cuda.device_count())
 for i in range(torch.cuda.device_count()):
     p = torch.cuda.get_device_properties(i)
-    print(f"[gpu] device {i}: {p.name} | {p.total_memory // 1024**3} GB")
-EOF
+    print(f'[gpu] device {i}: {p.name} | {p.total_memory // 1024**3} GB')
+" | tee -a "$LOG"
 
 echo "[onstart] $(date) - done" | tee -a "$LOG"
 echo ""

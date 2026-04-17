@@ -55,8 +55,8 @@ profiles:
 
   cloud:
     # QLoRA on 1.5B/7B, 1xRTX PRO 6000 WS 96GB
-    per_device_train_batch_size: 8    # 96GB VRAM + 4096 seq len gives plenty of headroom
-    gradient_accumulation_steps: 2    # effective batch 16
+    per_device_train_batch_size: 8   # 96GB VRAM, ~85GB at this batch size
+    gradient_accumulation_steps: 2    # effective batch 16, no accumulation overhead
     bf16: true
     fp16: false
     full_finetune: false
@@ -101,6 +101,7 @@ sft:
   num_train_epochs: 1
   learning_rate: 2.0e-5    # lower LR for SFT -- less aggressive than DPO stage
   warmup_steps: 50
+  eval_strategy: "epoch"
 
 training:
   num_train_epochs: 3
@@ -112,9 +113,9 @@ training:
   loss_type: "ipo"          # sigmoid | hinge | ipo (ipo = robust to noisy pairs)
   rpo_alpha: 1.0            # mixes SFT-on-chosen into loss (0 = pure DPO/IPO)
   logging_steps: 10
-  save_steps: 200
-  eval_steps: 200
-  save_total_limit: 3
+  save_steps: 800
+  eval_steps: 800
+  save_total_limit: 5
   output_dir: "outputs"
   report_to: "wandb"
   run_name: "qwen2.5-1.5b-dpo-trajectory"

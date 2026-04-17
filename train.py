@@ -224,6 +224,7 @@ def run_sft_stage(
     model,
     tokenizer,
     dataset: DatasetDict,
+    resume_from_checkpoint: str | None = None,
 ) -> str:
     """Stage 1: SFT on chosen trajectories.
 
@@ -248,7 +249,7 @@ def run_sft_stage(
     )
 
     logger.info("Starting SFT stage...")
-    trainer.train()
+    trainer.train(resume_from_checkpoint=resume_from_checkpoint)
 
     final_dir = os.path.join(sft_args.output_dir, "final")
     trainer.save_model(final_dir)
@@ -280,6 +281,10 @@ def main():
         "--sft-checkpoint", default=None,
         help="Path to SFT checkpoint to initialise the DPO stage from. "
              "Only used when --stage=dpo.",
+    )
+    parser.add_argument(
+        "--resume-from-checkpoint", default=None,
+        help="Path to a checkpoint to resume training from (works for both SFT and DPO stages).",
     )
     parser.add_argument(
         "--dry-run", action="store_true",
@@ -321,7 +326,8 @@ def main():
 
     # --- Stage 1: SFT ---
     if args.stage in ("sft", "both"):
-        sft_checkpoint = run_sft_stage(cfg, model, tokenizer, dataset)
+        sft_checkpoint = run_sft_stage(cfg, model, tokenizer, dataset,
+                                       resume_from_checkpoint=args.resume_from_checkpoint)
         if args.stage == "sft":
             return
         # Reload the SFT-trained weights for DPO stage
@@ -343,7 +349,8 @@ def main():
     )
 
     logger.info("Starting DPO training...")
-    trainer.train()
+    dpo_resume = args.resume_from_checkpoint if args.stage == "dpo" else None
+    trainer.train(resume_from_checkpoint=dpo_resume)
 
     # --- Save ---
     final_dir = os.path.join(cfg["training"]["output_dir"], "final")

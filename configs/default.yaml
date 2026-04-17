@@ -18,7 +18,7 @@ model_presets:
 
 data:
   # Path to trajectory parquet files from the crawler
-  trajectory_dir: "../crawler/conversation_crawler/data/trajectory"
+  trajectory_dir: "./data/"
   # Optional: filter by source
   source: null              # null = all, "reddit", "hacker_news"
   test_split: 0.05

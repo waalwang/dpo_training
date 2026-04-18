@@ -3,7 +3,7 @@
 
 model:
   name: "Qwen/Qwen2.5-1.5B-Instruct"
-  max_length: 4096          # dataset p50 fits within this; was 8192
+  max_length: 2048          # dataset p50 fits within this; was 8192
 
 # Model presets -- use with --model-override <key>
 model_presets:
@@ -56,14 +56,14 @@ profiles:
 
   cloud:
     # QLoRA on 1.5B/7B, 1xRTX PRO 6000 WS 96GB
-    per_device_train_batch_size: 8   # 96GB VRAM, ~85GB at this batch size
-    gradient_accumulation_steps: 2    # effective batch 16, no accumulation overhead
+    per_device_train_batch_size: 16   # 96GB VRAM, ~85GB at this batch size
+    gradient_accumulation_steps: 1    # effective batch 16, no accumulation overhead
     bf16: true
     fp16: false
     full_finetune: false
     attn_implementation: "sdpa"
     gradient_checkpointing: true
-    max_length: 4096
+    max_length: 2048
     max_prompt_length: 1024
 
   cloud_full:
@@ -76,7 +76,7 @@ profiles:
     full_finetune: true
     attn_implementation: "sdpa"
     gradient_checkpointing: true
-    max_length: 4096
+    max_length: 2048
     max_prompt_length: 1024
     learning_rate: 2.0e-5     # lower LR for full FT
     weight_decay: 0.05
@@ -91,7 +91,7 @@ profiles:
     full_finetune: false
     attn_implementation: "sdpa"
     gradient_checkpointing: true
-    max_length: 4096
+    max_length: 2048
     max_prompt_length: 1024
 
 # Stage 1: SFT on chosen trajectories (used when --stage sft or both)
@@ -122,3 +122,4 @@ training:
   output_dir: "outputs"
   report_to: "wandb"
   run_name: "qwen2.5-1.5b-dpo-trajectory"
+  max_length: 2048

@@ -208,7 +208,7 @@ def build_sft_args(cfg: dict) -> SFTConfig:
         fp16=t["fp16"],
         gradient_checkpointing=t["gradient_checkpointing"],
         logging_steps=t["logging_steps"],
-        save_steps=t["save_steps"],
+        save_steps=sft.get("save_steps", t["save_steps"]),
         eval_steps=sft.get("eval_steps", t["eval_steps"]),
         eval_strategy=sft.get("eval_strategy", "steps"),
         save_total_limit=t["save_total_limit"],

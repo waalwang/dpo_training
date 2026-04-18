@@ -139,13 +139,12 @@ def _load_parquet_shard(path: str) -> list[dict]:
         chosen = _strip_turns(json.loads(data["chosen"][i]))
         rejected = _strip_turns(json.loads(data["rejected"][i]))
 
-        # DPOTrainer wants chosen/rejected to include the full conversation
-        # (prefix + trajectory), not just the trajectory portion.
-        # The crawler stores them separately, so we concatenate here.
+        # TRL >= 0.9 concatenates prompt + chosen internally; store only the
+        # response messages here to avoid double-prefixing.
         rows.append({
             "prompt": prompt,
-            "chosen": prompt + chosen,
-            "rejected": prompt + rejected,
+            "chosen": chosen,
+            "rejected": rejected,
             "score_delta": float(data["score_delta"][i]),
         })
 

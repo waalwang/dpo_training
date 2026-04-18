@@ -142,8 +142,8 @@ def build_training_args(cfg: dict) -> DPOConfig:
         report_to=t.get("report_to", "none"),
         run_name=t.get("run_name"),
         beta=t["beta"],
-        loss_type=t["loss_type"],
-        rpo_alpha=t.get("rpo_alpha"),
+        loss_type=[t["loss_type"], "sft"] if t.get("rpo_alpha") else t["loss_type"],
+        loss_weights=[1.0, t["rpo_alpha"]] if t.get("rpo_alpha") else None,
         max_length=t["max_length"],
         remove_unused_columns=False,
         seed=cfg["data"].get("seed", 42),
@@ -237,16 +237,16 @@ def run_sft_stage(
 ) -> str:
     """Stage 1: SFT on chosen trajectories.
 
-    Each chosen entry is a full conversation (prefix + chosen turns) as a
-    list of message dicts. SFTTrainer applies the chat template and supervises
-    on all assistant tokens.
+    The dataset stores prompt and chosen-response separately (DPO format).
+    We concatenate them here into a full conversation for SFT.
 
     Returns the path to the saved SFT checkpoint.
     """
-    # SFTTrainer expects a 'messages' column (list of dicts) or a 'text' column.
-    # Our 'chosen' field is already prompt+chosen turns as message dicts.
-    sft_train = dataset["train"].select_columns(["chosen"]).rename_column("chosen", "messages")
-    sft_eval  = dataset["test"].select_columns(["chosen"]).rename_column("chosen", "messages")
+    def _to_messages(example):
+        return {"messages": example["prompt"] + example["chosen"]}
+
+    sft_train = dataset["train"].map(_to_messages, remove_columns=dataset["train"].column_names)
+    sft_eval  = dataset["test"].map(_to_messages, remove_columns=dataset["test"].column_names)
 
     sft_args = build_sft_args(cfg)
     trainer  = SFTTrainer(

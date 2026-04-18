@@ -101,7 +101,9 @@ sft:
   num_train_epochs: 1
   learning_rate: 2.0e-5    # lower LR for SFT -- less aggressive than DPO stage
   warmup_steps: 50
-  eval_strategy: "epoch"
+  eval_strategy: "steps"
+  eval_steps: 3000
+  save_steps: 3000
 
 training:
   num_train_epochs: 3

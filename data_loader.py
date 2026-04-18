@@ -16,25 +16,14 @@ from parquet columns.
 from __future__ import annotations
 
 import glob
-import hashlib
 import json
 import logging
 import os
 from typing import Optional
 
-from datasets import Dataset, DatasetDict, load_from_disk
+from datasets import Dataset, DatasetDict
 
 logger = logging.getLogger(__name__)
-
-
-def _cache_key(trajectory_dir: str, source, test_split: float, seed: int, score_delta_threshold: float) -> str:
-    """Stable hash over the parameters that determine the dataset contents."""
-    pattern = os.path.join(trajectory_dir, "*.parquet")
-    files = sorted(glob.glob(pattern))
-    # Include file names + mtimes so cache busts if data changes
-    file_sig = "|".join(f"{f}:{os.path.getmtime(f):.0f}" for f in files)
-    params = f"{file_sig}|{source}|{test_split}|{seed}|{score_delta_threshold}"
-    return hashlib.md5(params.encode()).hexdigest()[:16]
 
 
 def load_trajectory_dataset(
@@ -43,7 +32,6 @@ def load_trajectory_dataset(
     test_split: float = 0.05,
     seed: int = 42,
     score_delta_threshold: float = 0.0,
-    cache_dir: Optional[str] = None,
 ) -> DatasetDict:
     """Load trajectory parquet files into a HuggingFace DatasetDict.
 
@@ -58,13 +46,6 @@ def load_trajectory_dataset(
     Returns:
         DatasetDict with "train" and "test" splits.
     """
-    if cache_dir:
-        key = _cache_key(trajectory_dir, source, test_split, seed, score_delta_threshold)
-        cache_path = os.path.join(cache_dir, key)
-        if os.path.isdir(cache_path):
-            logger.info(f"Loading dataset from cache: {cache_path}")
-            return load_from_disk(cache_path)
-
     pattern = os.path.join(trajectory_dir, "*.parquet")
     files = sorted(glob.glob(pattern))
     if not files:
@@ -111,12 +92,6 @@ def load_trajectory_dataset(
         f"Split: train={len(split['train'])}, test={len(split['test'])}"
     )
 
-    if cache_dir:
-        os.makedirs(cache_dir, exist_ok=True)
-        cache_path = os.path.join(cache_dir, key)
-        split.save_to_disk(cache_path)
-        logger.info(f"Dataset cached to {cache_path}")
-
     return split
 
 
@@ -161,5 +136,4 @@ def load_from_config(config: dict) -> DatasetDict:
         test_split=data_cfg.get("test_split", 0.05),
         seed=data_cfg.get("seed", 42),
         score_delta_threshold=data_cfg.get("score_delta_threshold", 0.0),
-        cache_dir=data_cfg.get("cache_dir"),
     )

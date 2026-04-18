@@ -24,7 +24,6 @@ data:
   test_split: 0.05
   seed: 42
   score_delta_threshold: 0.0  # drop pairs with chosen-rejected score delta <= this
-  cache_dir: "./cache/dataset"  # Arrow cache; delete to force re-processing
 
 # QLoRA config
 qlora:

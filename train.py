@@ -51,6 +51,7 @@ from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
     BitsAndBytesConfig,
+    TrainerCallback,
 )
 from trl import DPOConfig, DPOTrainer, SFTConfig, SFTTrainer
 
@@ -84,6 +85,14 @@ def load_config(config_path: str, profile: str, model_override: str | None = Non
 
     cfg["_full_finetune"] = cfg["training"].get("full_finetune", False)
     return cfg
+
+
+class SyncStateStepsCallback(TrainerCallback):
+    # On resume, HF restores logging/eval/save_steps from trainer_state.json
+    # and ignores new values in args. Re-sync from args at train start so
+    # config changes between runs actually take effect.
+    def on_train_begin(self, args, state, control, **kwargs):
+        state.compute_steps(args, state.max_steps)
 
 
 def build_quantization_config(cfg: dict) -> BitsAndBytesConfig:
@@ -207,7 +216,7 @@ def build_sft_args(cfg: dict) -> SFTConfig:
         bf16=t["bf16"],
         fp16=t["fp16"],
         gradient_checkpointing=t["gradient_checkpointing"],
-        logging_steps=t["logging_steps"],
+        logging_steps=sft.get("logging_steps", t["logging_steps"]),
         save_steps=sft.get("save_steps", t["save_steps"]),
         eval_steps=sft.get("eval_steps", t["eval_steps"]),
         eval_strategy=sft.get("eval_strategy", "steps"),
@@ -246,6 +255,7 @@ def run_sft_stage(
         train_dataset=sft_train,
         eval_dataset=sft_eval,
         processing_class=tokenizer,
+        callbacks=[SyncStateStepsCallback()],
     )
 
     logger.info("Starting SFT stage...")
@@ -346,6 +356,7 @@ def main():
         train_dataset=dataset["train"],
         eval_dataset=dataset["test"],
         processing_class=tokenizer,
+        callbacks=[SyncStateStepsCallback()],
     )
 
     logger.info("Starting DPO training...")

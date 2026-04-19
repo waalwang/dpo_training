@@ -314,9 +314,15 @@ def main():
 
     # --- Model ---
     # For dpo-only stage, optionally load from a saved SFT checkpoint.
+    # Full FT: the SFT checkpoint is a full model, load it directly.
+    # QLoRA: the SFT checkpoint is an adapter; load base + attach adapter.
+    sft_adapter_to_load = None
     if args.stage == "dpo" and args.sft_checkpoint:
         logger.info(f"Loading SFT checkpoint for DPO stage: {args.sft_checkpoint}")
-        cfg["model"]["name"] = args.sft_checkpoint
+        if full_ft:
+            cfg["model"]["name"] = args.sft_checkpoint
+        else:
+            sft_adapter_to_load = args.sft_checkpoint
 
     model, tokenizer = load_model_and_tokenizer(cfg)
 
@@ -325,6 +331,9 @@ def main():
     # --- LoRA (skip for full fine-tune) ---
     if full_ft:
         logger.info(f"Full fine-tune: {total:,} params, all trainable")
+    elif sft_adapter_to_load:
+        model = PeftModel.from_pretrained(model, sft_adapter_to_load, is_trainable=True)
+        model.print_trainable_parameters()
     else:
         lora_config = build_lora_config(cfg)
         model = get_peft_model(model, lora_config)

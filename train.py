@@ -146,6 +146,7 @@ def build_training_args(cfg: dict) -> DPOConfig:
         loss_weights=[1.0, t["rpo_alpha"]] if t.get("rpo_alpha") else None,
         max_length=t["max_length"],
         remove_unused_columns=False,
+        dataset_num_proc=t.get("dataset_num_proc"),
         seed=cfg["data"].get("seed", 42),
     )
 
@@ -224,6 +225,7 @@ def build_sft_args(cfg: dict) -> SFTConfig:
         report_to=t.get("report_to", "none"),
         run_name=(t.get("run_name") or "") + "-sft",
         max_length=t["max_length"],
+        dataset_num_proc=t.get("dataset_num_proc"),
         seed=cfg["data"].get("seed", 42),
     )
 

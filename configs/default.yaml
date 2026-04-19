@@ -55,8 +55,8 @@ profiles:
 
   cloud:
     # QLoRA on 1.5B/7B, 1xRTX PRO 6000 WS 96GB
-    per_device_train_batch_size: 16   # 96GB VRAM, ~85GB at this batch size
-    gradient_accumulation_steps: 1    # effective batch 16, no accumulation overhead
+    per_device_train_batch_size: 8   # 96GB VRAM, ~85GB at this batch size
+    gradient_accumulation_steps: 2    # effective batch 24, no accumulation overhead
     bf16: true
     fp16: false
     full_finetune: false
@@ -122,3 +122,4 @@ training:
   report_to: "wandb"
   run_name: "qwen2.5-1.5b-dpo-trajectory"
   max_length: 2048
+  dataset_num_proc: 16      # parallel tokenization workers

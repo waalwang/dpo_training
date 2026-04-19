@@ -46,7 +46,7 @@ import sys
 import torch
 import yaml
 from datasets import DatasetDict
-from peft import LoraConfig, TaskType, get_peft_model, prepare_model_for_kbit_training
+from peft import LoraConfig, PeftModel, TaskType, get_peft_model, prepare_model_for_kbit_training
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
@@ -340,12 +340,17 @@ def main():
                                        resume_from_checkpoint=args.resume_from_checkpoint)
         if args.stage == "sft":
             return
-        # Reload the SFT-trained weights for DPO stage
-        logger.info("Reloading SFT checkpoint for DPO stage...")
-        cfg["model"]["name"] = sft_checkpoint
-        model, tokenizer = load_model_and_tokenizer(cfg)
-        if not full_ft:
-            model = get_peft_model(model, build_lora_config(cfg))
+        # Reload for DPO stage. For QLoRA, reload the base model and attach
+        # the SFT adapter as trainable so DPO continues from SFT weights
+        # without stacking adapters. For full FT, the SFT checkpoint is the
+        # model itself.
+        logger.info("Reloading for DPO stage...")
+        if full_ft:
+            cfg["model"]["name"] = sft_checkpoint
+            model, tokenizer = load_model_and_tokenizer(cfg)
+        else:
+            model, tokenizer = load_model_and_tokenizer(cfg)
+            model = PeftModel.from_pretrained(model, sft_checkpoint, is_trainable=True)
 
     # --- Stage 2: DPO ---
     training_args = build_training_args(cfg)

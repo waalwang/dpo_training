@@ -107,13 +107,15 @@ sft:
 
 training:
   num_train_epochs: 3
-  learning_rate: 5.0e-5
-  warmup_steps: 100
+  learning_rate: 5.0e-6
+  warmup_steps: 0
+  warmup_ratio: 0.1
   weight_decay: 0.01
   lr_scheduler_type: "cosine"
-  beta: 0.1                 # DPO beta -- controls divergence from reference
+  beta: 0.05                 # DPO beta -- controls divergence from reference
   loss_type: "ipo"          # sigmoid | hinge | ipo (ipo = robust to noisy pairs)
-  rpo_alpha: 1.0            # mixes SFT-on-chosen into loss (0 = pure DPO/IPO)
+  rpo_alpha: 0.1            # mixes SFT-on-chosen into loss (0 = pure DPO/IPO)
+  ld_alpha: 0.2             # LD-DPO: downweight verbose tokens (1=off, lower=stronger)
   logging_steps: 10
   save_steps: 800
   eval_steps: 800

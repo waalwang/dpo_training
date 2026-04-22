@@ -1,0 +1,115 @@
+# DPO Training Config -- Clean Reddit Probe Run
+# ----------------------------------------------
+# Conservative baseline on filtered ~210k-pair Reddit dataset.
+# Goal: establish trainability with boring config before stacking loss tweaks.
+
+model:
+  name: "Qwen/Qwen2.5-1.5B-Instruct"
+  max_length: 2048
+
+model_presets:
+  qwen-1.5b:
+    name: "Qwen/Qwen2.5-1.5B-Instruct"
+  qwen-7b:
+    name: "Qwen/Qwen2.5-7B-Instruct"
+  qwen-14b:
+    name: "Qwen/Qwen2.5-14B-Instruct"
+  llama-8b:
+    name: "meta-llama/Llama-3.1-8B-Instruct"
+
+data:
+  trajectory_dir: "./data/clean_v3/upload"
+  source: null
+  test_split: 0.05
+  seed: 42
+  score_delta_threshold: 0.0  # filtering done at extraction; leave at 0
+
+qlora:
+  r: 16
+  lora_alpha: 32
+  lora_dropout: 0.05
+  target_modules:
+    - "q_proj"
+    - "k_proj"
+    - "v_proj"
+    - "o_proj"
+    - "gate_proj"
+    - "up_proj"
+    - "down_proj"
+  task_type: "CAUSAL_LM"
+
+profiles:
+  local:
+    per_device_train_batch_size: 1
+    gradient_accumulation_steps: 1
+    bf16: false
+    fp16: true
+    attn_implementation: "eager"
+    gradient_checkpointing: true
+    max_length: 2048
+    max_prompt_length: 1024
+
+  cloud:
+    per_device_train_batch_size: 8
+    gradient_accumulation_steps: 2
+    bf16: true
+    fp16: false
+    full_finetune: false
+    attn_implementation: "sdpa"
+    gradient_checkpointing: true
+    max_length: 2048
+    max_prompt_length: 1024
+
+  cloud_full:
+    per_device_train_batch_size: 2
+    gradient_accumulation_steps: 8
+    bf16: true
+    fp16: false
+    full_finetune: true
+    attn_implementation: "sdpa"
+    gradient_checkpointing: true
+    max_length: 2048
+    max_prompt_length: 1024
+    learning_rate: 2.0e-5
+    weight_decay: 0.05
+
+  cloud_qlora_big:
+    per_device_train_batch_size: 2
+    gradient_accumulation_steps: 8
+    bf16: true
+    fp16: false
+    full_finetune: false
+    attn_implementation: "sdpa"
+    gradient_checkpointing: true
+    max_length: 2048
+    max_prompt_length: 1024
+
+sft:
+  output_dir: "outputs/sft"
+  num_train_epochs: 1
+  learning_rate: 2.0e-5
+  warmup_steps: 50
+  eval_strategy: "steps"
+  eval_steps: 3000
+  save_steps: 3000
+
+training:
+  num_train_epochs: 1            # probe horizon; ~12.5k steps at batch 16
+  learning_rate: 5.0e-6
+  warmup_steps: 0
+  warmup_ratio: 0.1
+  weight_decay: 0.01
+  lr_scheduler_type: "cosine"
+  beta: 0.1                      # classic DPO range
+  loss_type: "sigmoid"           # boring baseline -- no target margin
+  rpo_alpha: null                # no SFT-mix
+  ld_alpha: null                 # data length-matched at selection
+  logging_steps: 10
+  save_steps: 1000
+  eval_steps: 1000
+  save_total_limit: 5
+  output_dir: "outputs/dpo_clean_probe"
+  report_to: "wandb"
+  run_name: "qwen2.5-1.5b-dpo-clean-probe"
+  max_length: 2048
+  dataset_num_proc: 16

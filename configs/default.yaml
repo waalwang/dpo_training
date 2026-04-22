@@ -20,7 +20,7 @@ data:
   # Path to trajectory parquet files from the crawler
   trajectory_dir: "./data/"
   # Optional: filter by source
-  source: null              # null = all, "reddit", "hacker_news"
+  source: "reddit"              # null = all, "reddit", "hacker_news"
   test_split: 0.05
   seed: 42
   score_delta_threshold: 0.0  # drop pairs with chosen-rejected score delta <= this
@@ -112,13 +112,13 @@ training:
   warmup_ratio: 0.1
   weight_decay: 0.01
   lr_scheduler_type: "cosine"
-  beta: 0.05                 # DPO beta -- controls divergence from reference
+  beta: 0.3                 # DPO beta -- controls divergence from reference
   loss_type: "ipo"          # sigmoid | hinge | ipo (ipo = robust to noisy pairs)
   rpo_alpha: 0.1            # mixes SFT-on-chosen into loss (0 = pure DPO/IPO)
   ld_alpha: 0.2             # LD-DPO: downweight verbose tokens (1=off, lower=stronger)
   logging_steps: 10
-  save_steps: 800
-  eval_steps: 800
+  save_steps: 2400
+  eval_steps: 2400
   save_total_limit: 5
   output_dir: "outputs"
   report_to: "wandb"
